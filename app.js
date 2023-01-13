@@ -107,19 +107,22 @@ const authenticateToken = (request, response, next) => {
   }
 };
 
-// latest tweets of people ( 4 tweets)
+//api 3  latest tweets of people ( 4 tweets)
 app.get("/user/tweets/feed/", authenticateToken, async (request, response) => {
   const user = request.username;
-  const query = `
-    select * from tweet inner join user on tweet.user_id = user.user_id
+  const tweetsQuery = `
+    select * from tweet 
+    inner join user on 
+    tweet.user_id = user.user_id
     where tweet.user_id in 
-    (select following_user_id as followers from
-         follower where follower_user_id = (select user_id from user where username='${user}'))
-         
-         order by date_time desc
-         limit 4
-         ;`;
-  const data = await database.all(query);
+    (select following_user_id
+    from follower 
+    where follower_user_id = 
+    (select user_id from user 
+    where username='${user}'))
+    order by date_time desc
+    limit 4;`;
+  const data = await database.all(tweetsQuery);
   response.send(
     data.map((e) => {
       return {
@@ -135,8 +138,11 @@ app.get("/user/tweets/feed/", authenticateToken, async (request, response) => {
 app.get("/user/following/", authenticateToken, async (request, response) => {
   const user = request.username;
   const query = `
-    select * from follower inner join user on user.user_id = follower.following_user_id where follower_user_id = (
-        select user_id from user where username='${user}' 
+    select * from follower 
+    inner join user on user.user_id = follower.following_user_id
+     where follower_user_id = (
+        select user_id from user
+         where username='${user}' 
     );`;
   const data = await database.all(query);
   response.send(
@@ -152,8 +158,11 @@ app.get("/user/following/", authenticateToken, async (request, response) => {
 app.get("/user/followers/", authenticateToken, async (request, response) => {
   const user = request.username;
   const query = `
-    select * from follower inner join user on user.user_id = follower.follower_user_id where following_user_id = (
-        select user_id from user where username='${user}' 
+    select * from follower 
+    inner join user on user.user_id = follower.follower_user_id
+     where following_user_id = (
+        select user_id from 
+        user where username='${user}' 
     );`;
   const data = await database.all(query);
   response.send(
@@ -166,54 +175,5 @@ app.get("/user/followers/", authenticateToken, async (request, response) => {
 });
 
 //get tweets by tweet id
-app.get("/tweets/:tweetId/", authenticateToken, async (request, response) => {
-  const { tweetId } = request.params;
-  const user = request.username;
-  //   query = `
-
-  //   select t.tweet as tweet,count(reply_id) as replies,count(like_id) as likes,t.date_time as date_time from
-  //     (select * from tweet inner join reply on
-  //     tweet.tweet_id = reply.tweet_id) as t
-  //     inner join like on like.tweet_id = t.tweet_id
-  //     where t.tweet_id =${tweetId}
-  //     and t.user_id in (select user.user_id from follower inner join user on user.user_id = follower.following_user_id where follower_user_id = (
-  //         select user_id from user where username='${user}'
-  //     ))
-  //     group by t.tweet_id ;`;
-  const checkFollow = `
-select * from tweet 
-where tweet_id = ${tweetId} and 
-user_id in 
-(select user.user_id 
-    from follower inner join 
-    user on user.user_id = follower.following_user_id
-     where follower_user_id = (
- select user_id from user
-  where username='${user}'));`;
-
-  const check = await database.get(checkFollow);
-  if (check) {
-    query = `
-      select reply.tweet as tweet ,count(like_id) as likes,count(reply_id) as replies, date from reply inner join like on
-       reply.tweet_id = like.tweet_id
-       where reply.tweet_id = ${tweetId}
-       ;`;
-    const data = await database.all(query);
-    response.send(data);
-  }
-
-  //   if (data) {
-  //     response.send({
-  //       tweet: data.tweet,
-  //       likes: data.likes,
-  //       replies: data.replies,
-  //       dateTime: data.date_time,
-  //     });
-  //     response.status(200);
-  //   } else {
-  //     response.status(401);
-  //     response.send("Invalid Request");
-  //   }
-});
 
 module.exports = app;
